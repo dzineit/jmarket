@@ -147,40 +147,47 @@ public class DefaultMarket<T extends Marketed<T>> implements Market<T> {
             for (int i = 0; i < bidList.size(); i++) {
                 MarketBid bid = bidList.get(i);
                 MarketOffer bestOffer = offerList.get(0);
-                if (bid.getUnitPrice() >= bestOffer.getUnitPrice()) {
-                    double transactionQuantity = Math.min(bestOffer.getQuantity(), bid.getQuantity());
-                    MarketedTransfer<T> marketedTransfer = marketed.getTransfer(bestOffer.getSeller(), bid.getBidder(), transactionQuantity);
-                    double unitPrice = Math.min(bestOffer.getUnitPrice(), bid.getUnitPrice());
-                    WealthTransfer wealthTransfer = new WealthTransfer(bid.getBidder(), bestOffer.getSeller(), transactionCurrency, transactionQuantity * unitPrice);
-                    Transaction<T> transaction = new Transaction<>(marketedTransfer, wealthTransfer);
-                    TransactionResult transactionResult = transaction.execute();
-                    result.add(transaction);
 
-                    /*
-                     * success -> remove both offer and bid (and replace if not exact quantity match)
-                     * marketed sender not enough -> remove offer, retain bid
-                     * wealth sender too poor -> remove bid, retain offer
-                     * marketed recipient cannot receive -> remove bid, retain offer
-                     */
-
-                    if (transactionResult == TransactionResult.SUCCESS || transactionResult == TransactionResult.MARKETED_SENDER_NOT_ENOUGH) {
-                        if (bestOffer.getQuantity() > transactionQuantity) {
-                            offerList.set(0, new MarketOffer(bestOffer.getSeller(), transactionCurrency, bestOffer.getQuantity() - transactionQuantity, bestOffer.getUnitPrice()));
-                        } else {
-                            offerList.remove(0);
-                        }
-                    }
-
-                    if (transactionResult == TransactionResult.SUCCESS || transactionResult == TransactionResult.WEALTH_SENDER_TOO_POOR
-                            || transactionResult == TransactionResult.MARKETED_RECIPIENT_CANNOT_RECEIVE) {
-                        if (bid.getQuantity() > transactionQuantity) {
-                            bidList.set(i, new MarketBid(bid.getBidder(), transactionCurrency, bid.getQuantity() - transactionQuantity, bid.getUnitPrice()));
-                        } else {
-                            bidList.remove(i--);
-                        }
-                    }
-                } else {
+                // if our current highest bid offer is less than the lowest offer, no transactions can be made
+                if (bid.getUnitPrice() < bestOffer.getUnitPrice()) {
                     break;
+                }
+
+                // here, we know that the current bid-offer combination is a match on price
+                // however, they are not necessarily the same quantities
+                double transactionQuantity = Math.min(bestOffer.getQuantity(), bid.getQuantity());
+                double unitPrice = Math.min(bestOffer.getUnitPrice(), bid.getUnitPrice());
+
+                MarketedTransfer<T> marketedTransfer = marketed.getTransfer(bestOffer.getSeller(), bid.getBidder(), transactionQuantity);
+                WealthTransfer wealthTransfer = new WealthTransfer(bid.getBidder(), bestOffer.getSeller(), transactionCurrency, transactionQuantity * unitPrice);
+                Transaction<T> transaction = new Transaction<>(marketedTransfer, wealthTransfer);
+
+                TransactionResult transactionResult = transaction.execute();
+                result.add(transaction);
+
+                /*
+                 * success -> remove both offer and bid (and replace if not exact quantity match)
+                 * marketed sender not enough -> remove offer, retain bid
+                 * wealth sender too poor -> remove bid, retain offer
+                 * marketed recipient cannot receive -> remove bid, retain offer
+                 */
+
+                if (transactionResult == TransactionResult.SUCCESS || transactionResult == TransactionResult.MARKETED_SENDER_NOT_ENOUGH) {
+                    if (bestOffer.getQuantity() > transactionQuantity) {
+                        offerList.set(0, new MarketOffer(bestOffer.getSeller(), transactionCurrency, bestOffer.getQuantity() - transactionQuantity, bestOffer.getUnitPrice()));
+                    } else {
+                        offerList.remove(0);
+                    }
+                }
+
+                if (transactionResult == TransactionResult.SUCCESS || transactionResult == TransactionResult.WEALTH_SENDER_TOO_POOR
+                        || transactionResult == TransactionResult.MARKETED_RECIPIENT_CANNOT_RECEIVE) {
+                    if (bid.getQuantity() > transactionQuantity) {
+                        bidList.set(i, new MarketBid(bid.getBidder(), transactionCurrency, bid.getQuantity() - transactionQuantity, bid.getUnitPrice()));
+                    } else {
+                        bidList.remove(i);
+                        i--;
+                    }
                 }
             }
         } finally {
