@@ -27,48 +27,30 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * A person participating in a market. Always represents a player in-game, but this player may be offline.
+ * A person participating in a market.
  */
-public final class Agent implements WealthHolder {
-    private final UUID playerId;
+public class Agent implements WealthHolder {
+    private final UUID uniqueId;
     private final Map<Currency, Double> wealth;
 
-    private String name;
-
-    public Agent(UUID playerId, String name) {
-        this(playerId, name, new HashMap<>());
+    public Agent(UUID uniqueId, String name) {
+        this(uniqueId, name, new HashMap<>());
     }
 
-    public Agent(UUID playerId, String name, Map<Currency, Double> wealth) {
-        if (playerId == null) {
+    public Agent(UUID uniqueId, String name, Map<Currency, Double> wealth) {
+        if (uniqueId == null) {
             throw new IllegalArgumentException("Agent must have a player ID.");
         }
         if (name == null) {
             throw new IllegalArgumentException("Agent must have a name.");
         }
-        if (wealth == null) {
-            wealth = new HashMap<>();
-        }
 
-        this.playerId = playerId;
-        this.name = name;
-        this.wealth = new THashMap<>(wealth);
+        this.uniqueId = uniqueId;
+        this.wealth = wealth == null ? new HashMap<>() : new THashMap<>(wealth);
     }
 
-    public UUID getPlayerId() {
-        return playerId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        if (name == null) {
-            throw new IllegalArgumentException("Cannot set Agent name to null.");
-        }
-
-        this.name = name;
+    public UUID getUniqueId() {
+        return uniqueId;
     }
 
     @Override
@@ -127,11 +109,11 @@ public final class Agent implements WealthHolder {
             return false;
         }
         Agent that = (Agent) o;
-        return playerId.equals(that.playerId) && name.equals(that.name);
+        return uniqueId.equals(that.uniqueId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(playerId, name);
+        return Objects.hash(uniqueId);
     }
 }
